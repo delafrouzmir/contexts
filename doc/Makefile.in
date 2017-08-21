@@ -1,0 +1,158 @@
+#
+# Copyright (c) 2016-2017
+#   Stony Brook University
+# Copyright (c) 2015 - 2016
+#   Los Alamos National Security, LLC.
+# Copyright (c) 2011 - 2016
+#   University of Houston System and UT-Battelle, LLC.
+# Copyright (c) 2009 - 2016
+#   Silicon Graphics International Corp.  SHMEM is copyrighted
+#   by Silicon Graphics International Corp. (SGI) The OpenSHMEM API
+#   (shmem) is released by Open Source Software Solutions, Inc., under an
+#   agreement with Silicon Graphics International Corp. (SGI).
+#
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+# o Redistributions of source code must retain the above copyright notice,
+#   this list of conditions and the following disclaimers.
+#
+# o Redistributions in binary form must reproduce the above copyright
+#   notice, this list of conditions and the following disclaimer in the
+#   documentation and/or other materials provided with the distribution.
+#
+# o Neither the name of the University of Houston System,
+#   UT-Battelle, LLC. nor the names of its contributors may be used to
+#   endorse or promote products derived from this software without specific
+#   prior written permission.
+#
+# o Neither the name of Los Alamos National Security, LLC, Los Alamos
+#   National Laboratory, LANL, the U.S. Government, nor the names of its
+#   contributors may be used to endorse or promote products derived from
+#   this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+# TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+# LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+
+
+
+PREFIX = @PREFIX@
+
+MANDIR = $(PREFIX)/share/man
+
+MODULES_DIR = @MODULES_DIR@
+
+MANPAGES_1_IN = $(wildcard *.1.in)
+MANPAGES_3_IN = $(wildcard *.3.in)
+MANPAGES_5_IN = $(wildcard *.5.in)
+
+MANPAGES_1 = $(MANPAGES_1_IN:.in=)
+MANPAGES_3 = $(MANPAGES_3_IN:.in=)
+MANPAGES_5 = $(MANPAGES_5_IN:.in=)
+
+MAN_PAGES = $(MANPAGES_1) $(MANPAGES_3) $(MANPAGES_5)
+
+IMPL_TEX = openshmem-implementation.tex
+IMPL_PDF = $(IMPL_TEX:.tex=.pdf)
+
+REMOVE   = rm -f
+
+.PHONY: all default
+.PHONY: install install-man install-man1 install-man3 install-man5
+.PHONY: uninstall uninstall-man uninstall-man1 uninstall-man3 uninstall-man5
+.PHONY: clean distclean
+
+.SUFFIXES: .tex .pdf
+
+#
+# don't go nuts if pdflatex not installed
+#
+
+%.pdf:	%.tex
+	-pdflatex $< </dev/null
+	-pdflatex $< </dev/null
+
+all default:	$(IMPL_PDF)	$(MAN_PAGES)
+
+# -------------------------------------------------------------------
+
+.SUFFIXES: .1 .5 .in
+
+%.1:	%.1.in
+	sed -e "s%\@MODULES_DIR\@%$(MODULES_DIR)%g" < $^ > $@
+
+%.5:	%.5.in
+	sed -e "s%\@MODULES_DIR\@%$(MODULES_DIR)%g" < $^ > $@
+
+# -------------------------------------------------------------------
+
+install:	install-man
+
+install-man:	install-man1	install-man3	install-man5
+
+install-man1:	all
+	mkdir -p $(DESTDIR)$(MANDIR)/man1
+	for p in $(MANPAGES_1); do \
+		install -c -m 644 $$p $(DESTDIR)$(MANDIR)/man1; \
+	done
+
+install-man3:	all
+	mkdir -p $(DESTDIR)$(MANDIR)/man3
+	for p in $(MANPAGES_3); do \
+		install -c -m 644 $$p $(DESTDIR)$(MANDIR)/man3; \
+	done
+
+install-man5:	all
+	mkdir -p $(DESTDIR)$(MANDIR)/man5
+	for p in $(MANPAGES_5); do \
+		install -c -m 644 $$p $(DESTDIR)$(MANDIR)/man5; \
+	done
+
+# -------------------------------------------------------------------
+
+uninstall:	uninstall-man
+	-rmdir $(DESTDIR)$(MANDIR)
+	-rmdir $(DESTDIR)$(PREFIX)/share
+
+uninstall-man:	uninstall-man1	uninstall-man3 uninstall-man5
+
+uninstall-man1:
+	for p in $(MANPAGES_1); do \
+		$(REMOVE) $(DESTDIR)$(MANDIR)/man1/$$p; \
+	done
+	-rmdir $(DESTDIR)$(MANDIR)/man1
+
+uninstall-man3:
+	for p in $(MANPAGES_3); do \
+		$(REMOVE) $(DESTDIR)$(MANDIR)/man3/$$p; \
+	done
+	-rmdir $(DESTDIR)$(MANDIR)/man3
+
+uninstall-man5:
+	for p in $(MANPAGES_5); do \
+		$(REMOVE) $(DESTDIR)$(MANDIR)/man5/$$p; \
+	done
+	-rmdir $(DESTDIR)$(MANDIR)/man5
+
+# -------------------------------------------------------------------
+
+clean:
+	$(REMOVE) *.aux *.log *.out *.toc
+	$(REMOVE) $(MAN_PAGES)
+	$(REMOVE) $(IMPL_PDF)
+
+distclean: clean
+	$(REMOVE) Makefile

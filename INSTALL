@@ -1,0 +1,371 @@
+#
+# Copyright (c) 2016
+#   Stony Brook University
+# Copyright (c) 2015 - 2016
+#   Los Alamos National Security, LLC.
+# Copyright (c) 2011 - 2016
+#   University of Houston System and UT-Battelle, LLC.
+# Copyright (c) 2009 - 2016
+#   Silicon Graphics International Corp.  SHMEM is copyrighted
+#   by Silicon Graphics International Corp. (SGI) The OpenSHMEM API
+#   (shmem) is released by Open Source Software Solutions, Inc., under an
+#   agreement with Silicon Graphics International Corp. (SGI).
+#
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+# o Redistributions of source code must retain the above copyright notice,
+#   this list of conditions and the following disclaimers.
+#
+# o Redistributions in binary form must reproduce the above copyright
+#   notice, this list of conditions and the following disclaimer in the
+#   documentation and/or other materials provided with the distribution.
+#
+# o Neither the name of the University of Houston System,
+#   UT-Battelle, LLC. nor the names of its contributors may be used to
+#   endorse or promote products derived from this software without specific
+#   prior written permission.
+#
+# o Neither the name of Los Alamos National Security, LLC, Los Alamos
+#   National Laboratory, LANL, the U.S. Government, nor the names of its
+#   contributors may be used to endorse or promote products derived from
+#   this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+# TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+# LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+
+Installation Instructions for OpenSHMEM
+=======================================
+
+The OpenSHMEM library currently installs on top of GASNet and anything
+required by whichever conduit you want to use with GASNet, e.g. an
+MPI.  GASNet provides a portable communications layer for this
+implementation of OpenSHMEM to work on top of.
+
+Package Requirements on Linux Distributions
+===========================================
+
+Common
+======
+
+    * gcc, g++, gfortran
+    * git
+    * make, bison, flex
+    * m4
+    * autoconf, automake
+    * libtool, libtool-ltdl
+    * environment-modules [optional]
+
+Ubuntu
+======
+
+Software can be installed on the command-line with apt-get, or via
+package managers like synaptic and aptitude.
+
+    * libelf-dev
+
+and you will need to tell configure
+
+    --with-libelf-libdir=/usr/lib/x86_64-linux-gnu
+
+Fedora
+======
+
+    * group install 'Development Tools'
+    * elfutils-libelf-devel
+
+Redhat/CentOS
+=============
+
+    * Same as Fedora
+
+SUSE/OpenSUSE
+=============
+
+    * Same as Fedora
+
+
+GASNet Versions
+===============
+
+Released versions of GASNet are tracked as they come out and tested
+against this implementation.  The first version used was 1.14.0 and
+new versions are tested upon release.
+
+GASNet is now available from its source repository, which has also
+been used for testing.
+
+Building GASNet
+===============
+
+GASNet can be configured in many weird and wonderful ways.  Unless
+you're working in a very particular environment, it is probably
+easiest to allow GASNet to auto-detect network support and configure
+discovered conduits.
+
+A sample configuration that the OpenSHMEM library's author has used
+is:
+
+    1: 	  /path/to/gasnet-source-directory/configure \
+    2: 	      --enable-segment-fast                  \
+    3: 	      --disable-aligned-segments             \
+    4: 	      --enable-throttle-poll                 \
+    5:        --disable-udp                          \
+    6:        --with-pmi=/path/to/pmi                \
+    7: 	      --prefix=/path/to/install
+
+This is for a general-purpose GNU/Linux system (or cluster):
+
+    1:    path to configure script (build in separate directory)
+    2: 	  "fast" (small messages) segment
+    3: 	  address-space-randomization, heap addresses can be different
+    4: 	  throttled polling for SMP conduit
+    5:    don't bother building UDP support, don't want it here
+    6:    integrate with the PMI infrastructure
+          (e.g. "srun" in a SLURM installation or via "aprun")
+    7: 	  where to install GASNet
+
+Building OpenSHMEM
+==================
+
+Here is how configure might be called on a cluster using Infiniband,
+with debugging support (e.g. argument and PE range checking) and
+operation tracing:
+
+    1:    .../configure --prefix=$HOME/SHMEM          \
+    2:                  --with-gasnet-root=/usr       \
+    3:                  --with-gasnet-conduit=ibv     \
+    4:                  --enable-debug		      \
+    5:                  --enable-trace
+
+On a cluster using gigabit as interconnect, or on a single SMP
+machine:
+
+    1:    .../configure --prefix=$HOME/SHMEM                 \
+    2:                  --with-gasnet-root=/opt/gasnet/large \
+    3:                  --with-gasnet-conduit=mpi
+
+Optimized for SMP (no MPI involved):
+
+    1:    .../configure --prefix=$HOME/SHMEM          \
+    2:                  --with-gasnet-root=/usr       \
+    3:                  --with-gasnet-conduit=smp     \
+    4:                  --enable-debug
+
+    (GASNet built with fast/large model)
+
+Compilers and flags can be selected via environment variables, e.g.
+
+    CC="gcc" CFLAGS="-g -O2" .../configure ...options...
+
+The compiler suite can also be selected at one go via
+
+    .../configure ... --with-compiler=SUITE
+
+where SUITE is a name such as GNU, Intel, ... (case-insensitive).
+Omitting the SUITE will list known compilers.
+
+This library's configure script will list the discovered conduits for
+you and prompt for a choice if you do not choose one explicitly; if
+there is exactly 1 conduit available, it will be used automatically.
+
+
+OpenSHMEM Installation Notes
+============================
+
+The "configure" script
+======================
+
+This script will eventually be the GNU autotools setup, but for now
+it's just a basic shell script to give the same kind of look-and-feel.
+The script accepts a --help option.
+
+After configure has run successfully, it will leave a file
+"config.status" in the top-level build directory containing the
+information required to recreate the selected configuration.  The file
+is executable, so you can just say
+
+    ./config.status
+
+to re-run the same configure.
+
+The default layout of an installation is as follows:
+
+.
+|-- bin
+|   |-- oshc++
+|   |-- oshcc
+|   |-- oshcxx
+|   |-- oshfort
+|   `-- oshrun
+|-- include
+|   |-- mpp
+|   |   |-- pshmem.fh
+|   |   |-- pshmem.h
+|   |   |-- pshmemx.fh
+|   |   |-- pshmemx.h
+|   |   |-- shmem.fh
+|   |   |-- shmem.h
+|   |   |-- shmemx.fh
+|   |   `-- shmemx.h
+|   |-- pshmem.fh
+|   |-- pshmem.h
+|   |-- pshmemx.fh
+|   |-- pshmemx.h
+|   |-- shmem.fh
+|   |-- shmem.h
+|   |-- shmemx.fh
+|   `-- shmemx.h
+|-- lib
+|   |-- libopenshmem.a
+|   `-- pkgconfig
+|       `-- openshmem.pc
+|-- modulefiles
+|   `-- openshmem
+`-- share
+    `-- man
+        |-- man1
+        |   |-- oshc++.1
+        |   |-- oshcc.1
+        |   |-- oshcxx.1
+        |   |-- oshfort.1
+        |   `-- oshrun.1
+        |-- man3
+        `-- man5
+
+
+GASNet & Infiniband
+-------------------
+
+On some cluster setups we have seen issues with larger segment sizes.
+Restricting the segment allocation to 512MB has solved these problems.
+Note that you can do this via an environment variable supported by
+this OpenSHMEM library: see the man page for oshconfig(5).  The kernel
+parameters "shmmax" and "shmall" may affect this behavior.  Some notes
+on setting these can be found here:
+
+  http://www.puschitz.com/TuningLinuxForOracle.shtml#SettingSharedMemory
+
+Other GASNet environment variables that may help include
+
+  GASNET_PHYSMEM_NOPROBE
+  GASNET_PHYSMEM_MAX
+  GASNET_NUM_QPS
+
+See the GASNet documentation for details:
+
+  http://gasnet.lbl.gov/dist/ibv-conduit/README
+
+Update: the registered memory issues are at least partly due to
+hardware not allowing large registrations by default.  We (UH) were
+able to fix this on our development cluster by following the
+instructions at:
+
+  http://www.open-mpi.org/faq/?category=openfabrics#ib-low-reg-mem
+
+In situations where you want to be able to pass a hostfile or specific
+arguments to MPI, GASNet provides an environment variable MPIRUN_CMD:
+
+  http://gasnet.lbl.gov/dist/mpi-conduit/README
+
+ELF Library
+-----------
+
+There are 2 common ELF libraries:
+
+    elfutils :: https://fedorahosted.org/elfutils/
+    libelf   :: http://www.mr511.de/software/english.html
+
+While all local development (University of Houston) has used elfutils
+on a number of Linux distributions, we encountered some portability
+issues between elfutils and libelf on some remote systems.  Hopefully
+these issues have been addressed.
+
+N.B. we don't currently support other executable formats (Mach-O,
+XCOFF etc.).
+
+Module
+======
+
+The module(1) command
+
+    http://modules.sourceforge.net/
+
+allows users or sysadmins to simplify setting up extra packages.
+
+A sample file will be created after configure is run and will be
+installed to
+
+    <install>/modulefiles/openshmem
+
+You can then
+
+    module load <install>/modulefiles/openshmem
+
+to set up your environment for OpenSHMEM.  See the modules
+documentation for more advanced usage.
+
+Pkg-Config
+==========
+
+pkg-config(1)
+
+    http://www.freedesktop.org/wiki/Software/pkg-config
+
+helps packages provide configuration information for other packages to
+interact with them, so you can ask OpenSHMEM for its CFLAGS or
+libraries for linking.  Add
+
+    <install>/lib/pkgconfig
+
+to the PKG_CONFIG_PATH environment variable.  The modulefile installed
+as part of this library does that automatically.
+
+This means you can compile/link programs e.g. with Open64 from a bash
+shell (single line wrapped for formatting):
+
+    $ opencc $(pkg-config --cflags openshmem)     \
+          program.c                               \
+              $(pkg-config --libs openshmem)
+
+or with any other compiler of your choice (N.B. implementations on top
+of some MPIs will require compilation in this manner with the
+appropriate MPI compiler wrapper such as mpicc, or otherwise passing
+the definitions, headers and libraries for that MPI to a compiler).
+
+Some Supporting Software
+========================
+
+1. GASNet   :: http://gasnet.lbl.gov/
+            :: https://bitbucket.org/berkeleylab/gasnet
+
+2. UCCS     :: http://uccs.github.io/uccs/
+
+3. Open-MPI :: http://www.open-mpi.org/
+
+4. MVAPICH2 :: http://mvapich.cse.ohio-state.edu/overview/mvapich2/
+
+Testing Environments at the University of Houston
+=================================================
+
+1. SMP: 2 x 8 processor Nehalem, 32GB RAM, GASNet "mpi" & "smp"
+   conduits, OpenMPI 1.4.3++
+
+2. Opteron cluster: ~ 30 nodes, 2-4 ppn, SDR IB interconnect, "ibv" &
+   "mpi" conduits, OpenMPI & MVAPICH2 with SLURM integration
+
+3. Opteron cluster: ~ 250 nodes, 2-8 ppn, Gigabit interconnect, "mpi"
+   conduit, OpenMPI 1.4.3 with pbs ("tm") integration
